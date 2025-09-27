@@ -1,3 +1,5 @@
+const chatBox = document.querySelector(".area-sms")
+const form = document.querySelector("#formData")
 const inputMessage = document.querySelector("#message")
 const btnSubmit = document.querySelector("#btnSubmit")
 
@@ -8,3 +10,11 @@ inputMessage.addEventListener('keyup', () => {
         btnSubmit.classList.add('active')
     }
 })
+
+window.onload = () => {
+    scrollToBottom();
+}
+
+function scrollToBottom(){
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
