@@ -68,7 +68,7 @@
 
             <div class="field-line">
                 <label for="email">E-mail</label>
-                <input type="email" name="email" id="email" value="@old('email')" placeholder="seu@email.com" />
+                <input type="text" name="email" id="email" value="@old('email')" placeholder="seu@email.com" />
             </div>
 
             <div class="field-line">

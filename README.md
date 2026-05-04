@@ -30,11 +30,11 @@
 
 Abaixo podes conferir o funcionamento da interface, desde a navegação lateral até ao painel de edição de perfil.
 
+ ## 🎥 Demo
 <p align="center">
-  <!-- Para adicionar o vídeo: No editor do GitHub, arraste o ficheiro .mp4 para esta linha -->
-  <video src="public/assets/videos/demo.webm" width="100%" controls>
-    O seu navegador não suporta a reprodução de vídeos.
-  </video>
+
+![Demo do Chat](public/assets/videos/demo.gif)
+
 </p>
 
 ---
