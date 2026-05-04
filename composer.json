@@ -1,8 +1,8 @@
 {
     "name": "slenix/slenix",
-    "description": "Slenix é um micro framework flexível para construir APIs REST e aplicações web",
-    "keywords": ["slenix", "microframework"],
-    "homepage": "https://github.com/claudiovictors/slenix",
+    "description": "Slenix is a fast and flexible framework for building REST APIs and web applications",
+    "keywords": ["slenix", "framework", "orm", "route", "cli"],
+    "homepage": "https://slenix.vercel.app",
     "type": "project",
     "license": "MIT",
     "authors": [
@@ -10,7 +10,7 @@
             "name": "Cláudio Victor",
             "email": "barrosclaudio147@gmail.com",
             "role": "Developer",
-            "homepage": "https://github.com/claudiovictors"
+            "homepage": "https://slenix.vercel.app"
         }
     ],
     "require": {
@@ -22,14 +22,18 @@
             "Slenix\\": "src/"
         },
         "files": [
-            "src/Helpers/Helpers.php"
+            "src/Supports/Helpers/Helpers.php"
         ]
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
     "scripts": {
+        "post-create-project-cmd": [
+            "@php -r \"if (!file_exists('.env') && file_exists('.env.example')) { copy('.env.example', '.env'); echo '[INFO]  .env file created successfully.'.PHP_EOL; }\"",
+            "@php celestial key:generate --ansi"
+        ],
         "post-install-cmd": [
-            "@php -r \"echo 'Slenix instalado com sucesso!\\n';\""
+            "@php -r \"if (!file_exists('.env') && file_exists('.env.example')) { copy('.env.example', '.env'); echo '[INFO]  .env file created successfully.'.PHP_EOL; }\""
         ],
         "serve": "php celestial serve"
     },
@@ -41,5 +45,4 @@
         "issues": "https://github.com/claudiovictors/slenix/issues",
         "source": "https://github.com/claudiovictors/slenix"
     }
-
 }

@@ -3,35 +3,75 @@
 
 /*
 |--------------------------------------------------------------------------
-| SLENIX CLI - Ferramenta de Desenvolvimento
+| CELESTIAL CLI — Slenix Development Tool
 |--------------------------------------------------------------------------
 |
-| Esta classe final representa a interface de linha de comando (CLI) do
-| framework Slenix. Ela fornece uma série de comandos úteis para auxiliar
-| no desenvolvimento, como a criação de models, controllers, middlewares
-| e o gerenciamento do servidor de desenvolvimento local.
+| The command-line interface for the Slenix framework.
+| Provides generators, migration management, a development server,
+| queue workers, and a WebSocket server.
 |
 */
 
 declare(strict_types=1);
 
-// Carrega o autoloader do Composer
 require_once __DIR__ . '/vendor/autoload.php';
 
-use Slenix\Commands\Command;
-use Slenix\Commands\MakeCommand;
-use Slenix\Commands\ServeCommand;
+use Slenix\Core\EnvLoader;
+use Slenix\Http\Routing\Router;
+use Slenix\Supports\Queue\Queue;
+use Slenix\Core\Console\Command;
+use Slenix\Supports\Template\Luna;
+use Slenix\Core\Console\SeedCommand;
+use Slenix\Core\Console\MakeCommand;
+use Slenix\Core\Console\ServeCommand;
+use Slenix\Core\Console\WorkerCommand;
+use Slenix\Core\Console\MigrateCommand;
+use Slenix\Core\WebSocket\WebSocketServer;
 
+/**
+ * Attempt to load the environment variables.
+ * Failure is intentionally ignored — generator commands must work without .env.
+ */
+try {
+    EnvLoader::load(__DIR__ . '/.env');
+} catch (\Exception $e) {
+    // .env is optional for generator commands (make:*, key:generate, etc.)
+}
+
+/**
+ * Class Celestial
+ *
+ * Entry point for the Slenix Command-Line Interface.
+ * Maps CLI command strings to the relevant command class and method,
+ * then delegates execution.
+ */
 final class Celestial
 {
+    /**
+     * Raw CLI arguments passed from the terminal ($argv).
+     *
+     * @var array
+     */
     private array $args;
 
+    /**
+     * @param array $args Raw argv array from the PHP entry point.
+     */
     public function __construct(array $args)
     {
         $this->args = $args;
         $this->run();
     }
 
+    /**
+     * Dispatches the CLI command to its corresponding handler.
+     *
+     * Reads $this->args[1] as the command name and routes execution to the
+     * appropriate command class. Exits with code 1 on unknown commands or
+     * unhandled exceptions.
+     *
+     * @return void
+     */
     private function run(): void
     {
         if (count($this->args) < 2) {
@@ -43,107 +83,242 @@ final class Celestial
 
         try {
             switch ($command) {
+
+                // ── Application ───────────────────────────────────────────────
+                case 'key:generate':
+                    MakeCommand::generateKey();
+                    MakeCommand::generateJwt();
+                    break;
+
+                // ── Scaffolding generators ────────────────────────────────────
                 case 'make:model':
                     (new MakeCommand($this->args))->makeModel();
                     break;
+
                 case 'make:controller':
-                    // Verifica se tem a flag --resource
-                    if (in_array('--resource', $this->args)) {
-                        (new MakeCommand($this->args))->makeControllerResource();
-                    } else {
-                        (new MakeCommand($this->args))->makeController();
-                    }
+                    (new MakeCommand($this->args))->makeController();
                     break;
+
                 case 'make:middleware':
                     (new MakeCommand($this->args))->makeMiddleware();
                     break;
+
+                case 'make:migration':
+                    (new MigrateCommand($this->args))->makeMigration();
+                    break;
+
+                case 'make:seeder':
+                    (new SeedCommand($this->args))->makeSeeder();
+                    break;
+
+                case 'make:factory':
+                    (new SeedCommand($this->args))->makeFactory();
+                    break;
+                
+                case 'veil:install':
+                    require_once __DIR__ . '/vendor/slenix/veil/src/Console/VeilInstallCommand.php';
+                    (new \Slenix\Veil\Console\VeilInstallCommand($this->args))->install();
+                    break;
+
+                case 'make:job':
+                    (new MakeCommand($this->args))->makeJob();
+                    break;
+
+                // ── Security generators ───────────────────────────────────────
+                case 'make:throttle':
+                    (new MakeCommand($this->args))->makeThrottle();
+                    break;
+
+                // ── Database migrations ───────────────────────────────────────
+                case 'migrate':
+                    (new MigrateCommand($this->args))->run();
+                    break;
+
+                case 'migrate:rollback':
+                    (new MigrateCommand($this->args))->rollback();
+                    break;
+
+                case 'migrate:reset':
+                    (new MigrateCommand($this->args))->reset();
+                    break;
+
+                case 'migrate:fresh':
+                    (new MigrateCommand($this->args))->fresh();
+                    if (in_array('--seed', $this->args)) {
+                        echo PHP_EOL;
+                        (new SeedCommand($this->args))->run();
+                    }
+                    break;
+
+                case 'migrate:status':
+                    (new MigrateCommand($this->args))->status();
+                    break;
+
+                // ── Database seeding ──────────────────────────────────────────
+                case 'db:seed':
+                    (new SeedCommand($this->args))->run();
+                    break;
+
+                // ── Background queue ──────────────────────────────────────────
+                case 'queue:work':
+                    (new WorkerCommand($this->args))->work();
+                    break;
+
+                case 'queue:failed':
+                    (new WorkerCommand($this->args))->failed();
+                    break;
+
+                case 'queue:clear':
+                    (new WorkerCommand($this->args))->clear();
+                    break;
+
+                // ── WebSocket server ──────────────────────────────────────────
+                case 'ws:serve':
+                    $this->startWebSocketServer();
+                    break;
+
+                // ── Route inspection ──────────────────────────────────────────
                 case 'route:list':
                     $this->listRoutes();
                     break;
+
+                // ── HTTP development server ───────────────────────────────────
                 case 'serve':
                     (new ServeCommand($this->args))->execute();
                     break;
+
+                // ── View maintenance ──────────────────────────────────────────
+                case 'view:clear':
+                    Luna::clearCache();
+                    Command::success('View cache cleared.');
+                    break;
+
+                // ── Help / version ────────────────────────────────────────────
                 case 'help':
                 case '--help':
                 case '-h':
                     Command::help();
                     break;
+
                 case 'version':
                 case '--version':
                 case '-v':
                     Command::version();
                     break;
+
                 default:
-                    Command::error("Comando desconhecido: {$command}");
+                    Command::error("Unknown command: {$command}");
                     Command::help();
                     exit(1);
             }
-        } catch (Exception $e) {
-            Command::error("Erro: {$e->getMessage()}");
+        } catch (\Exception $e) {
+            Command::error("Error: {$e->getMessage()}");
             exit(1);
         }
     }
 
     /**
-     * Lista todas as rotas registradas.
+     * Initialises and starts the standalone WebSocket server.
+     *
+     * Reads optional --host= and --port= flags from the CLI arguments,
+     * loads the route file so that Router::websocket() registrations are picked
+     * up, then maps each registered WebSocket route to a handler instance and
+     * starts the event loop.
+     *
+     * @return void
      */
-    private function listRoutes(): void
+    private function startWebSocketServer(): void
     {
-        Command::info('Carregando rotas...');
+        $c    = self::getConsole();
+        $host = '127.0.0.1';
+        $port = 8081;
 
-        // Incluir arquivo de rotas se existir
+        foreach ($this->args as $arg) {
+            if (str_starts_with($arg, '--port=')) {
+                $port = (int) substr($arg, 7);
+            }
+            if (str_starts_with($arg, '--host=')) {
+                $host = substr($arg, 7);
+            }
+        }
+
+        echo PHP_EOL;
+        echo $c->colorize("  ▾ Celestial WebSocket Server", 'white', true) . PHP_EOL;
+        echo PHP_EOL;
+        echo $c->colorize("  ➜ Listening: ", 'cyan') . "ws://{$host}:{$port}" . PHP_EOL;
+        echo PHP_EOL;
+        echo $c->colorize("  press Ctrl+C to stop", 'red', true) . PHP_EOL;
+        echo PHP_EOL;
+
         $routesFile = __DIR__ . '/routes/web.php';
         if (file_exists($routesFile)) {
             require_once $routesFile;
         }
 
-        $routes = \Slenix\Http\Message\Router::getRoutes();
+        $server = new WebSocketServer($host, $port);
+
+        foreach (Router::getWebSocketRoutes() as $path => $handlerClass) {
+            $server->addHandler($path, new $handlerClass());
+            Command::info("  WebSocket handler registered: {$path} → {$handlerClass}");
+        }
+
+        $server->start();
+    }
+
+    /**
+     * Loads the application routes and displays all registered HTTP routes
+     * in a formatted table.
+     *
+     * @return void
+     */
+    private function listRoutes(): void
+    {
+        Command::info('Loading routes...');
+
+        $routesFile = __DIR__ . '/routes/web.php';
+        if (file_exists($routesFile)) {
+            require_once $routesFile;
+        }
+
+        $routes = Router::getRoutes();
 
         if (empty($routes)) {
-            Command::warning('Nenhuma rota encontrada.');
+            Command::warning('No routes found.');
             return;
         }
 
         echo PHP_EOL;
-        Command::info('Rotas registradas:');
+        Command::info('Registered routes:');
         echo str_repeat('-', 80) . PHP_EOL;
         printf("%-8s %-30s %-25s %-15s%s", 'METHOD', 'URI', 'HANDLER', 'NAME', PHP_EOL);
         echo str_repeat('-', 80) . PHP_EOL;
 
         foreach ($routes as $route) {
-            $handler = $this->formatHandler($route['handler']);
-            $name = $route['name'] ?? '';
-            $middlewares = !empty($route['middleware']) ? ' [' . implode(', ', $route['middleware']) . ']' : '';
+            $handler     = $this->formatHandler($route['handler']);
+            $name        = $route['name'] ?? '';
+            $middlewares = !empty($route['middleware'])
+                ? ' [' . implode(', ', $route['middleware']) . ']'
+                : '';
 
-            printf(
-                "%-8s %-30s %-25s %-15s%s",
-                $route['method'],
-                $route['pathUri'],
-                $handler,
-                $name,
-                PHP_EOL
-            );
+            printf("%-8s %-30s %-25s %-15s%s", $route['method'], $route['pathUri'], $handler, $name, PHP_EOL);
 
             if ($middlewares) {
-                printf(
-                    "%-8s %-30s %-25s %-15s%s",
-                    '',
-                    '',
-                    $middlewares,
-                    '',
-                    PHP_EOL
-                );
+                printf("%-8s %-30s %-25s %-15s%s", '', '', $middlewares, '', PHP_EOL);
             }
         }
 
         echo str_repeat('-', 80) . PHP_EOL;
-        Command::success('Total: ' . count($routes) . ' rotas');
+        Command::success('Total: ' . count($routes) . ' route(s).');
     }
 
     /**
-     * Formata o handler para exibição.
+     * Formats a route handler for display in the route table.
+     *
+     * @param mixed $handler The raw handler value from the route definition.
+     *
+     * @return string Human-readable handler label.
      */
-    private function formatHandler($handler): string
+    private function formatHandler(mixed $handler): string
     {
         if (is_callable($handler) && !is_array($handler)) {
             return 'Closure';
@@ -155,11 +330,24 @@ final class Celestial
 
         return 'Unknown';
     }
+
+    /**
+     * Returns a new instance of the Console helper used for coloured output.
+     *
+     * @return \Slenix\Core\Console\Console
+     */
+    private static function getConsole(): \Slenix\Core\Console\Console
+    {
+        return new \Slenix\Core\Console\Console();
+    }
 }
 
+/**
+ * CLI entry point — bootstrap and dispatch.
+ */
 try {
     new Celestial($argv);
-} catch (Throwable $e) {
-    Command::error("Erro fatal: {$e->getMessage()}");
+} catch (\Throwable $e) {
+    Command::error("Fatal error: {$e->getMessage()}");
     exit(1);
 }

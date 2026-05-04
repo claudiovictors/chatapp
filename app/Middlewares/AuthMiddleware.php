@@ -1,10 +1,10 @@
 <?php
 /*
 |--------------------------------------------------------------------------
-| Classe AuthMiddleware
+| AuthMiddleware Class
 |--------------------------------------------------------------------------
 |
-| Este middleware [descreva a funcionalidade do middleware aqui].
+| This middleware [describe the middleware functionality here].
 |
 */
 
@@ -12,35 +12,30 @@ declare(strict_types=1);
 
 namespace App\Middlewares;
 
-use App\Models\User;
-use Slenix\Libraries\Session;
-use Slenix\Http\Message\Request;
-use Slenix\Http\Message\Response;
-use Slenix\Http\Message\Middleware;
+use Slenix\Http\Request;
+use Slenix\Http\Response;
+use Slenix\Http\Middlewares\Middleware;
 
 class AuthMiddleware implements Middleware
 {
     /**
-     * Handle da requisição através do middleware.
+     * Handle an incoming request.
      *
-     * @param Request $request A requisição HTTP.
-     * @param Response $response A resposta HTTP.
-     * @param array $params Parâmetros da rota.
-     * @return bool Retorna true para continuar, false para interromper.
+     * @param Request $request  The HTTP request.
+     * @param Response $response The HTTP response.
+     * @param callable $next     The next handler in the pipeline.
+     * @return mixed
      */
-    public function handle(Request $request, Response $response, array $params): bool
+    public function handle(Request $request, Response $response, callable $next): mixed
     {
-        // Lógica do middleware aqui
-        $someCondition = Session::has('user_id');
+        // Middleware logic here
 
-        // Exemplo: verificar alguma condição
-        if (!$someCondition) {
-
-            redirect('/login'); // Redirecionar o usuário para a tela de login
-
+        // Example: check some condition
+        if (!session()->has('auth_id')) {
+            response()->status(403)->redirect('/sign-in');
             return false;
         }
 
-        return true; // Continua a execução
+        return $next($request, $response);
     }
 }

@@ -1,0 +1,20 @@
+# =============================================================================
+# Slenix Framework — robots.txt
+# =============================================================================
+
+User-agent: *
+
+Disallow: /src/
+Disallow: /vendor/
+Disallow: /app/
+Disallow: /routes/
+Disallow: /storage/
+Disallow: /views/
+
+Disallow: /celestial
+Disallow: /.env
+Disallow: /.env.example
+Disallow: /composer.json
+Disallow: /composer.lock
+
+Allow: /

@@ -5,159 +5,164 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\User;
-use Slenix\Http\Message\Request;
-use Slenix\Http\Message\Response;
-use Slenix\Http\Message\Upload;
-use Slenix\Libraries\Session;
+use Slenix\Http\Request;
+use Slenix\Http\Response;
+use Slenix\Supports\Libraries\Str;
 
+/**
+ * Classe AuthController
+ * 
+ * Gere os processos de autenticação, incluindo login, registo e encerramento de sessão.
+ * 
+ * @package App\Controllers
+ */
 class AuthController
 {
     /**
-     * Renderização para a página de Register
-     * @param \Slenix\Http\Message\Request $request
-     * @param \Slenix\Http\Message\Response $response
+     * Apresenta a página de login.
+     *
+     * @param Request $req Objeto da requisição.
+     * @param Response $res Objeto da resposta.
+     * @return mixed A view do formulário de login.
      */
-    public function showRegister(Request $request, Response $response)
-    {
-        return view('auth.register');
-    }
-
-    /**
-     * Renderização para a página de Login
-     * @param \Slenix\Http\Message\Request $request
-     * @param \Slenix\Http\Message\Response $response
-     */
-    public function showLogin(Request $request, Response $response)
+    public function index(Request $req, Response $res)
     {
         return view('auth.login');
     }
 
     /**
-     * Registrar novos usuários
-     * @param \Slenix\Http\Message\Request $request
-     * @param \Slenix\Http\Message\Response $response
+     * Apresenta a página de registo de novos utilizadores.
+     *
+     * @param Request $req Objeto da requisição.
+     * @param Response $res Objeto da resposta.
+     * @return mixed A view do formulário de registo.
      */
-    public function regiter(Request $request, Response $response)
+    public function shpwRegister(Request $req, Response $res)
     {
-        $user_id = rand(time(), 10000000);
-        $fname = sanetize($request->input('fname'));
-        $lname = sanetize($request->input('lname'));
-        $email = sanetize($request->input('email'));
-        $password = sanetize($request->input('password'));
-        $image = $_FILES['image'];
-
-        Session::flashOldInput($request->all()); # Pega todos dados antigos
-
-        # Verifica se os campos estão vázios ou não
-        if (empty($fname) && empty($lname) && empty($email) && empty($password)) {
-            Session::flash('error', 'Por favor preencha os campos vázios!');
-            redirect('/');
-        }
-
-        if (!$image) {
-            Session::flash('error', 'Por favor seleciona uma imagem!');
-            redirect('/');
-        }
-
-        if (!sanetize($fname) && !sanetize($lname)) {
-            Session::flash('error', 'Por favor digite o seu nome completo!');
-            redirect('/');
-        }
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Session::flash('error', 'Por favor digite um e-mail válido!');
-            redirect('/');
-        }
-
-        if (strlen($password) < 6) {
-            Session::flash('error', 'Senha deve ter pelo menos 6 caracteres!');
-            redirect('/');
-        }
-
-        if (User::where('email', $email)->exists()) {
-            Session::flash('error', 'E-mail já cadastrado!');
-            redirect('/');
-        }
-
-        $passwordHash = password_hash($password, PASSWORD_BCRYPT);
-
-        $instanceUpload = new Upload($image);
-        $nameImage = 'IMG-' . $instanceUpload->getHash() . '-' . date('Y-m-d') . '.' . $instanceUpload->getExtension();
-
-        $instanceUpload->setAllowedExtensions(['png', 'jpg', 'jpeg', 'webp'])
-            ->setMaxSize(2 * 1024 * 1024);
-
-        if (!$instanceUpload->isValid()) {
-            Session::flash('error', 'Imagem inválida! Use JPG/PNG até 2MB');
-            return redirect('/');
-        }
-
-        if ($instanceUpload->store('assets/images/', $nameImage)) {
-            $createUser = User::create([
-                'id' => $user_id,
-                'fname' => $fname,
-                'lname' => $lname,
-                'email' => $email,
-                'password' => $passwordHash,
-                'status' => 'Online',
-                'image' => basename($nameImage)
-            ]);
-
-            if (!$createUser) {
-                Session::flash('error', 'Erro ao carregar ao cadastrar');
-                return redirect('/');
-            }
-
-            $selectUser = User::where('email', $email)->first();
-            Session::set('user_id', $selectUser->id);
-            return redirect('/~');
-        } else {
-            Session::flash('error', 'Erro ao carregar a imagem');
-            return redirect('/');
-        }
+        return view('auth.register');
     }
 
+    /**
+     * Processa a criação de uma nova conta de utilizador.
+     *
+     * @param Request $req Objeto da requisição.
+     * @param Response $res Objeto da resposta.
+     * @return mixed Redirecionamento com mensagem de sucesso ou erro.
+     */
+    public function store(Request $req, Response $res)
+    {
+        // Higienização dos dados de entrada
+        $fname = Str::escape($req->input('fname'));
+        $lname = Str::escape($req->input('lname'));
+        $email = Str::escape($req->input('email'));
+        $password = Str::escape($req->input('password'));
+
+        // Validação de campos obrigatórios
+        if (empty($fname) || empty($lname) || empty($email) || empty($password)) {
+            flash()->error('Por favor, preencha todos os campos obrigatórios!');
+            return redirect()->back();
+        }
+
+        // Validação de formato de nome
+        if (!validate_name($fname) || !validate_name($lname)) {
+            flash()->error('Por favor, introduza um nome e apelido válidos!');
+            return redirect()->back();
+        }
+
+        // Validação de endereço de e-mail
+        if (!Str::isEmail($email)) {
+            flash()->error('Por favor, introduza um endereço de e-mail válido!');
+            return redirect()->back();
+        }
+
+        // Validação de segurança da palavra-passe
+        if (Str::length($password) < 8) {
+            flash()->error('A palavra-passe deve conter, no mínimo, 8 caracteres!');
+            return redirect()->back();
+        }
+
+        // Verificação de duplicidade de e-mail
+        if (User::where('email', $email)->exists()) {
+            flash()->error('Este endereço de e-mail já se encontra registado!');
+            return redirect()->back();
+        }
+
+        // Criação do utilizador no sistema
+        $user = User::create([
+            'fname' => $fname,
+            'lname' => $lname,
+            'email' => $email,
+            'password' => hash_make($password),
+            'is_active' => false,
+            'status' => 'online'
+        ]);
+
+        if (!$user) {
+            flash()->error('Ocorreu um erro inesperado durante o registo. Por favor, tente novamente!');
+            return redirect()->back();
+        }
+
+        // Autentica o utilizador e redireciona para a página principal
+        auth()->login($user);
+
+        return redirect()->route('home.show');
+    }
 
     /**
-     * Fazer login do usuário
-     * @param \Slenix\Http\Message\Request $request
-     * @param \Slenix\Http\Message\Response $response
+     * Processa a tentativa de autenticação do utilizador.
+     *
+     * @param Request $req Objeto da requisição.
+     * @param Response $res Objeto da resposta.
+     * @return mixed Redirecionamento para a home ou volta ao login em caso de falha.
      */
-    public function login(Request $request, Response $response)
+    public function login(Request $req, Response $res)
     {
-        $email = sanetize($request->input('email'));
-        $password = sanetize($request->input('password'));
+        $email = Str::escape($req->input('email'));
+        $password = Str::escape($req->input('password'));
 
-        Session::flashOldInput($request->all()); # Pega todos dados antigos
-
-        # Verifica se os campos estão vázios ou não
-        if (!empty($email) && !empty($password)) {
-
-            if (User::where('email', $email)->exists()) {
-                $user = User::where('email', $email)->first();
-
-                if ($user) {
-                    if (password_verify($password, $user->password)) {
-                        $selectUser = User::where('email', $email)->first();
-                        Session::set('user_id', $selectUser->id);
-                        $selectUser->status = 'Online';
-                        $selectUser->update();
-                        return redirect('/~');
-                    } else {
-                        Session::flash('error', 'Senha inválido!');
-                        redirect('/login');
-                    }
-                } else {
-                    Session::flash('error', 'E-mail inválido!');
-                    redirect('/login');
-                }
-            } else {
-                Session::flash('error', 'E-mail ou senha inválido!');
-                redirect('/login');
-            }
-        } else {
-            Session::flash('error', 'Por favor preencha os campos vázios!');
-            redirect('/login');
+        // Validação de preenchimento
+        if (empty($email) || empty($password)) {
+            flash()->error('Por favor, introduza as suas credenciais!');
+            return redirect()->back();
         }
+
+        // Verifica se o utilizador existe antes de tentar o login
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            flash()->error('Não foi possível encontrar uma conta associada a este e-mail.');
+            return redirect()->back();
+        }
+
+        // Tentativa de autenticação (Attempt)
+        if (!auth()->attempt(['email' => $email, 'password' => $password])) {
+            flash()->error('E-mail ou palavra-passe incorretos!');
+            return redirect()->back();
+        }
+
+        return redirect()->route('home.show');
+    }
+
+    /**
+     * Termina a sessão do utilizador atual.
+     *
+     * @param Request $req Objeto da requisição.
+     * @param Response $res Objeto da resposta.
+     * @return void
+     */
+    public function logout(Request $req, Response $res)
+    {
+        // Se não estiver autenticado, apenas redireciona
+        if (!auth()->check()) {
+            redirect()->route('login.show');
+            return;
+        }
+
+        $user = auth()->user();
+        $user->status = 'offline';
+        $user->save();
+
+        auth()->logout();
+        redirect()->route('login.show');
     }
 }

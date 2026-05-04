@@ -1,0 +1,161 @@
+/* Importação da fonte Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    display: flex;
+    min-height: 100dvh;
+    align-items: center;
+    justify-content: center;
+    background-color: #eef0f6; /* --bg-app */
+}
+
+/* CONTAINER - Estilo Desktop (Card) */
+.container {
+    width: 100%;
+    max-width: 460px;
+    padding: 2.5rem;
+    border-radius: 14px; /* --radius */
+    background-color: #fff;
+    /* Sombra mais suave: reduzimos a opacidade de 0.09 para 0.05 */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05); 
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+/* Responsividade para Celular (Mobile First ou via Media Query) */
+@media (max-width: 480px) {
+    body {
+        background-color: #fff; /* Fundo branco no mobile para parecer tela cheia */
+        padding: 0;
+        align-items: flex-start; /* Alinha o form no topo se necessário */
+    }
+
+    .container {
+        max-width: 100%;
+        min-height: 100dvh;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 2rem 1.5rem;
+    }
+    
+    form .field-group {
+        grid-template-columns: 1fr; /* Nomes ficam um abaixo do outro no mobile */
+        gap: 0;
+    }
+}
+
+.logo-box {
+    margin-bottom: 1.5rem;
+}
+
+.logo-box img {
+    width: 70px;
+    height: auto;
+}
+
+.title {
+    color: #212529; /* --gray-900 */
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: #6c757d; /* --gray-600 */
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+}
+
+.message-error {
+    font-size: 0.9rem;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    color: #fa6a6a;
+    background-color: #fff5f5;
+    border: 1px solid #ffe3e3;
+}
+
+form .field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+form .field-line {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    margin-bottom: 1.2rem;
+    position: relative;
+}
+
+form label {
+    color: #343a40; /* --gray-800 */
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+form input {
+    width: 100%;
+    height: 48px;
+    padding: 0 15px;
+    font-size: 16px;
+    border: 1.5px solid #dee2e6;
+    border-radius: 8px;
+    background-color: #fff;
+    transition: all 0.2s ease;
+    -webkit-appearance: none;
+}
+
+form input:focus {
+    border-color: #1f9e89; /* --blue-500 */
+    box-shadow: 0 0 0 3px rgba(31, 158, 137, 0.1);
+}
+
+form .field-line i.bx {
+    position: absolute;
+    right: 15px;
+    bottom: 14px;
+    font-size: 1.3rem;
+    color: #adb5bd; /* --gray-500 */
+    cursor: pointer;
+}
+
+form button {
+    width: 100%;
+    height: 52px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 8px;
+    background-color: #1f9e89; /* --blue-500 */
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s active, opacity 0.2s;
+}
+
+form button:active {
+    transform: scale(0.98);
+}
+
+.footer-line {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+a {
+    color: #1f9e89;
+    font-weight: 600;
+    text-decoration: none;
+}
